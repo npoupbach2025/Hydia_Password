@@ -1,17 +1,18 @@
-stages:
+stages:  # Définition des étapes
   - build
   - test
   - deploy
 
 variables:
+  GLOBAL_VAR: "Hello, GitLab!"
   MAVEN_CLI_OPTS: "-s settings.xml --batch-mode --errors --fail-at-end --show-version"
   DOCKER_IMAGE: "maven:3.8.6-openjdk-17"
 
 before_script:
-  - echo "Démarrage du pipeline CI/CD"
+  - echo "Initialisation du pipeline CI/CD"
 
-# 🎯 Étape 1 : Build
-build:
+# 🏗️ Build Job
+build-job:
   stage: build
   image: $DOCKER_IMAGE
   script:
@@ -22,8 +23,8 @@ build:
       - target/*.jar
     expire_in: 1h
 
-# 🎯 Étape 2 : Tests
-test:
+# ✅ Test Job
+test-job:
   stage: test
   image: $DOCKER_IMAGE
   script:
@@ -33,8 +34,8 @@ test:
     - main
     - develop
 
-# 🎯 Étape 3 : Déploiement en staging (branche main uniquement)
-deploy:
+# 🚀 Déploiement en staging (branche main uniquement)
+deploy-staging:
   stage: deploy
   only:
     - main
@@ -43,7 +44,8 @@ deploy:
     - scp target/*.jar user@staging-server:/opt/app/
     - ssh user@staging-server 'systemctl restart springboot-app'
   when: manual  # Déploiement manuel pour éviter un déploiement automatique
-  
+
+# 🔥 Déploiement en production avec validation manuelle
 deploy-production:
   stage: deploy
   only:
@@ -53,3 +55,14 @@ deploy-production:
     - scp target/*.jar user@prod-server:/opt/app/
     - ssh user@prod-server 'systemctl restart springboot-app'
   when: manual  # Validation manuelle requise
+
+# 📦 Gestion du cache
+cache-job:
+  stage: build
+  script:
+    - mkdir -p .cache
+    - echo "Cache stocké"
+  cache:
+    key: $CI_COMMIT_REF_SLUG
+    paths:
+      - .cache/

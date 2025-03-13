@@ -1,0 +1,55 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  MAVEN_CLI_OPTS: "-s settings.xml --batch-mode --errors --fail-at-end --show-version"
+  DOCKER_IMAGE: "maven:3.8.6-openjdk-17"
+
+before_script:
+  - echo "Démarrage du pipeline CI/CD"
+
+# 🎯 Étape 1 : Build
+build:
+  stage: build
+  image: $DOCKER_IMAGE
+  script:
+    - echo "Compilation du projet"
+    - mvn $MAVEN_CLI_OPTS clean package -DskipTests
+  artifacts:
+    paths:
+      - target/*.jar
+    expire_in: 1h
+
+# 🎯 Étape 2 : Tests
+test:
+  stage: test
+  image: $DOCKER_IMAGE
+  script:
+    - echo "Exécution des tests unitaires"
+    - mvn $MAVEN_CLI_OPTS test
+  only:
+    - main
+    - develop
+
+# 🎯 Étape 3 : Déploiement en staging (branche main uniquement)
+deploy:
+  stage: deploy
+  only:
+    - main
+  script:
+    - echo "Déploiement de l'application en staging"
+    - scp target/*.jar user@staging-server:/opt/app/
+    - ssh user@staging-server 'systemctl restart springboot-app'
+  when: manual  # Déploiement manuel pour éviter un déploiement automatique
+  
+deploy-production:
+  stage: deploy
+  only:
+    - main
+  script:
+    - echo "Déploiement en production"
+    - scp target/*.jar user@prod-server:/opt/app/
+    - ssh user@prod-server 'systemctl restart springboot-app'
+  when: manual  # Validation manuelle requise
